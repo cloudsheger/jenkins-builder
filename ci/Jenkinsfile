@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'DOCKER_IMAGE', defaultValue: 'terraform-build-docker', description: 'Docker image name')
+        string(name: 'ARTIFACTORY_REGISTRY', defaultValue: 'cloudshegerlab.jfrog.io', description: 'Artifactory registry URL')
+        string(name: 'ARTIFACTORY_REPOSITORY', defaultValue: 'terrafom-docker', description: 'Artifactory repository path')
+        string(name: 'DOCKERFILE_PATH', defaultValue: 'docker/Dockerfile', description: 'Path to the Dockerfile')
+        string(name: 'DOCKER_TAG', defaultValue: 'env', description: 'Docker image tag')
+    }
+
+    environment {
+        TIMESTAMP = new Date().format("yyyy-MM-dd-HH-mm")
+        ARTIFACTORY_CREDENTIALS_ID = credentials('artifactory-credentials-id')
+    }
+
+    stages {
+        stage('Build and Push Docker Image to Artifactory') {
+            steps {
+                script {
+                    // Build the Docker image using docker build and authenticate with registry
+                    docker.withRegistry("${params.ARTIFACTORY_REGISTRY}", ARTIFACTORY_CREDENTIALS_ID) {
+                        // Define the full Docker image name with tag
+                        def docker_image = "${params.ARTIFACTORY_REGISTRY}/${params.ARTIFACTORY_REPOSITORY}/${params.DOCKER_IMAGE}:${params.DOCKER_TAG}"
+
+                        // Build the Docker image with build arguments
+                        sh "docker build -t ${docker_image} --build-arg TIMESTAMP=${TIMESTAMP} -f ${params.DOCKERFILE_PATH} ."
+
+                        // Push the Docker image to Artifactory
+                        sh "docker push ${docker_image}"
+                    }
+                }
+            }
+        }
+    }
+}
