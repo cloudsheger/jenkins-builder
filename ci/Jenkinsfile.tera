@@ -1,0 +1,87 @@
+pipeline {
+    agent {
+        docker {
+            label params.AGENT
+            alwaysPull true
+            image 'cloudshegerlab.jfrog.io/terrafom-docker/terraform-build-docker:latest' // replace with your actual image name and tag
+            registryUrl "https://${DOCKER_URL}"
+            registryCredentialsId env.ZTPT_ACCOUNT
+        }
+    }
+
+    parameters {
+        choice(
+            choices: ['Build', 'Destroy'],
+            description: 'Action to take in the pipeline',
+            name: 'REQUESTED_ACTION'
+        )
+    }
+
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    echo "Set path"
+                    sh 'export PATH=$PATH:/usr/local/bin' // Assuming Terraform is in the default path
+                }
+            }
+        }
+
+        stage('Build') {
+            when {
+                expression { params.REQUESTED_ACTION == 'Build' }
+            }
+
+            steps {
+                script {
+                    echo "Build the ${BRANCH_NAME} environment"
+                    provisionEnvironment(BRANCH_NAME)
+                }
+            }
+        }
+
+        stage('Destroy') {
+            when {
+                expression { params.REQUESTED_ACTION == 'Destroy' }
+            }
+
+            steps {
+                script {
+                    echo "About to destroy ${BRANCH_NAME} environment"
+
+                    env.TERMINATENOW = input(
+                        message: "Are you sure?",
+                        parameters: [choice(name: "?", choices: 'no/yes', description: 'Choose "yes" to proceed, else "no" to stop.')]
+                    )
+
+                    if (env.TERMINATENOW == 'yes') {
+                        terminateEnvironment(BRANCH_NAME)
+                    } else {
+                        echo "Aborting terminate environment"
+                        return
+                    }
+                }
+            }
+        }
+    }
+}
+
+def provisionEnvironment(env) {
+    echo "Terraforming:"
+    sh "echo ${env}"
+    sh "terraform --version"
+    sh "terraform init"
+    sh "terraform workspace new ${env} || true"
+    sh "terraform workspace select ${env}"
+    sh "terraform plan -var-file='${env}.tfvars' -no-color"
+    sh "terraform apply -auto-approve -var-file='${env}.tfvars' -no-color"
+}
+
+def terminateEnvironment(env) {
+    echo "Destroying ...."
+    sh "echo ${env}"
+    sh "terraform init"
+    sh "terraform workspace new ${env} || true"
+    sh "terraform workspace select ${env}"
+    sh "terraform destroy -var-file='${env}.tfvars' -force"
+}
