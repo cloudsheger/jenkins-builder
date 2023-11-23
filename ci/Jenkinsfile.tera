@@ -5,7 +5,7 @@ pipeline {
             alwaysPull true
             image 'shegerlab23.jfrog.io/docker/terraform-build-docker:1.0' // replace with your actual image name and tag
             registryUrl "https://shegerlab23.jfrog.io"
-            registryCredentialsId admin.jfrog
+            registryCredentialsId 'admin.jfrog'
         }
     }
 
