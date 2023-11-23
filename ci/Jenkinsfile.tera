@@ -3,9 +3,9 @@ pipeline {
         docker {
             label params.AGENT
             alwaysPull true
-            image 'cloudshegerlab.jfrog.io/terrafom-docker/terraform-build-docker:latest' // replace with your actual image name and tag
-            registryUrl "https://${DOCKER_URL}"
-            registryCredentialsId env.ZTPT_ACCOUNT
+            image 'shegerlab23.jfrog.io/docker/terraform-build-docker:1.0' // replace with your actual image name and tag
+            registryUrl "https://shegerlab23.jfrog.io"
+            registryCredentialsId admin.jfrog
         }
     }
 
